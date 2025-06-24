@@ -3,3 +3,5 @@ langchain-text-splitters~=0.3.8
 langchain-google-genai~=2.1.5
 python-dotenv~=1.1.1
 faiss-cpu~=1.11.0
+chainlit~=2.5.5
+langchain~=0.3.26
