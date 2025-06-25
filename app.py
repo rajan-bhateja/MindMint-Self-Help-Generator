@@ -1,39 +1,37 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.prompts import ChatPromptTemplate
-from langchain.schema import StrOutputParser
-from langchain.schema.runnable import Runnable
-from langchain.schema.runnable.config import RunnableConfig
-from typing import cast
+import os
+from dotenv import load_dotenv
+
+from langchain_google_genai import GoogleGenerativeAIEmbeddings, GoogleGenerativeAI
+from langchain_community.vectorstores import FAISS
+
+import faiss
 
 import chainlit as cl
 
+load_dotenv()
 
-@cl.on_chat_start
-async def on_chat_start():
-    model = ChatGoogleGenerativeAI(model="models/gemini-2.5-flash", streaming=True)
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            (
-                "system",
-                "You're a very knowledgeable historian who provides accurate and eloquent answers to historical questions.",
-            ),
-            ("human", "{question}"),
-        ]
-    )
-    runnable = prompt | model | StrOutputParser()
-    cl.user_session.set("runnable", runnable)
+embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+vector_store = FAISS.load_local("word_embeddings", embeddings, allow_dangerous_deserialization=True)
 
+llm = GoogleGenerativeAI(model="gemini-2.5-flash")
 
 @cl.on_message
-async def on_message(message: cl.Message):
-    runnable = cast(Runnable, cl.user_session.get("runnable"))  # type: Runnable
+async def on_chat_start(message: cl.Message):
+    query = message.content
 
-    msg = cl.Message(content="")
+    docs = vector_store.similarity_search_with_score(query, top_k=10)
+    context = "\n\n".join([doc.page_content for doc, score in docs])
 
-    async for chunk in runnable.astream(
-        {"question": message.content},
-        config=RunnableConfig(callbacks=[cl.LangchainCallbackHandler()]),
-    ):
-        await msg.stream_token(chunk)
+    prompt = f"""
+        You are a supportive self-help advisor named MindMint.
+        Use the following excerpts from classic self-help books to craft a clear, practical, actionable answer in points, preferably with examples.
+        
+        User's question: {query}
+        
+        Relevant Excerpts: {context}
+        
+        Answer:
+    """
 
-    await msg.send()
+    response = await llm.ainvoke(prompt)
+    await cl.Message(content=response).send()
