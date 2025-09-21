@@ -1,12 +1,8 @@
 import asyncio
-
 from dotenv import load_dotenv
-
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, GoogleGenerativeAI
 from langchain_community.vectorstores import FAISS
-
 import faiss
-
 import chainlit as cl
 
 load_dotenv()
@@ -39,7 +35,7 @@ async def on_chat_start(message: cl.Message):
     # Stream tokens
     async for chunk in llm.astream(prompt):
         await response_msg.stream_token(chunk)
-        # await asyncio.sleep(1.00)
+        await asyncio.sleep(0.01)
 
     # Final update
     await response_msg.update()
