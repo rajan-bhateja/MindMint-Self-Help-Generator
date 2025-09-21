@@ -14,7 +14,7 @@ load_dotenv()
 embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
 vector_store = FAISS.load_local("word_embeddings", embeddings, allow_dangerous_deserialization=True)
 
-llm = GoogleGenerativeAI(model="gemini-2.5-flash", disable_streaming=False)
+llm = GoogleGenerativeAI(model="gemini-2.5-flash",)
 
 @cl.on_message
 async def on_chat_start(message: cl.Message):
@@ -26,7 +26,7 @@ async def on_chat_start(message: cl.Message):
     prompt = f"""
         You are a supportive self-help advisor named MindMint.
         Use the following excerpts from classic self-help books to craft a clear, practical, actionable answer in points, preferably with examples.
-        If a query is asked which is not relevant to self-help, simply respond by saying it's out of my domain.
+        Acknowledge out-of-domain queries, but don't answer them.
         User's question: {query}
         
         Relevant Excerpts: {context}
@@ -39,7 +39,7 @@ async def on_chat_start(message: cl.Message):
     # Stream tokens
     async for chunk in llm.astream(prompt):
         await response_msg.stream_token(chunk)
-        await asyncio.sleep(0.02)
+        # await asyncio.sleep(1.00)
 
     # Final update
     await response_msg.update()
